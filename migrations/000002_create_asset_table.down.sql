@@ -1,0 +1,8 @@
+BEGIN;
+
+DROP TABLE IF EXISTS asset;
+
+DROP INDEX IF EXISTS idx_asset_name;
+DROP INDEX IF EXISTS idx_asset_symbol;
+
+COMMIT;
