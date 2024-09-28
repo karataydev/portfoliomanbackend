@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS allocation (
     portfolio_id BIGINT NOT NULL,
     asset_id BIGINT NOT NULL,
     target_percentage DECIMAL(5,2) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_portfolio
         FOREIGN KEY(portfolio_id)
         REFERENCES portfolio(id)

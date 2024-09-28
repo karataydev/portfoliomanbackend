@@ -21,6 +21,8 @@ type Allocation struct {
 	PortfolioId      int64     `db:"portfolio_id" json:"portfolio_id"`
 	AssetId          int64     `db:"asset_id" json:"asset_id"`
 	TargetPercentage float64 `db:"target_percentage" json:"target_percentage"`
+	CreatedAt   time.Time      `db:"created_at" json:"created_at"`
+	UpdatedAt   time.Time      `db:"updated_at" json:"updated_at"`
 }
 
 

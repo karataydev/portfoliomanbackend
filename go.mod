@@ -8,6 +8,7 @@ require (
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.9
+	github.com/svarlamov/goyhfin v0.0.0-20161220065822-c7565afb5e91
 )
 
 require (

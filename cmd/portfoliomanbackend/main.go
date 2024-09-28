@@ -8,9 +8,14 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/github"
+	"github.com/karataydev/portfoliomanbackend/internal/asset"
+	"github.com/karataydev/portfoliomanbackend/internal/assetquotefeeder"
 	"github.com/karataydev/portfoliomanbackend/internal/config"
 	"github.com/karataydev/portfoliomanbackend/internal/database"
+	"github.com/karataydev/portfoliomanbackend/internal/param"
 	"github.com/karataydev/portfoliomanbackend/internal/portfolio"
+	"github.com/karataydev/portfoliomanbackend/pkg/scheduler"
+	"github.com/svarlamov/goyhfin"
 )
 
 func main() {
@@ -28,10 +33,37 @@ func main() {
 		log.Fatalf("could not run migrations: %v", err)
 	}
 
-	// Initialize repository, service, and handler
-	repo := portfolio.NewRepository(db)
-	service := portfolio.NewService(repo)
-	handler := portfolio.NewHandler(service)
+	// Initialize param repository, service
+	paramRepo := param.NewRepository(db)
+	paramService := param.NewService(paramRepo)
+
+	// Initialize portfolio repository, service, and handler
+	portfolioRepo := portfolio.NewRepository(db)
+	portfolioService := portfolio.NewService(portfolioRepo)
+	portfolioHandler := portfolio.NewHandler(portfolioService)
+
+	// AssetQuoteChanData Channel
+	assetQuoteChan := make(chan asset.AssetQuoteChanData)
+
+	// Initialize asset repository, service, and handler
+	assetRepo := asset.NewRepository(db)
+	assetService := asset.NewService(assetRepo, assetQuoteChan)
+	assetHandler := asset.NewHandler(assetService)
+	go assetService.AssetQuoteChanDataConsumer()
+
+	// initialize scraper
+	assetQuoteFeederService := assetquotefeeder.NewService(assetService, paramService, assetQuoteChan)
+
+	// add initail data if not insreted before
+	assetQuoteFeederService.InsertInitialData()
+	sched := &scheduler.Scheduler{}
+	sched.Add("daily quote data insert", 2, 22, 0, func() {
+		inErr := assetQuoteFeederService.ScrapeAllAssets(goyhfin.OneDay, goyhfin.OneHour)
+		if inErr != nil {
+			log.Printf("error running ScrapeAllAssets %+v", inErr)
+		}
+	})
+	sched.Start()
 
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
@@ -56,8 +88,12 @@ func main() {
 	api := app.Group("/api")
 
 	// Setup routes
-	api.Get("/portfolio/:portfolioID", handler.GetPortfolio)
-	api.Get("/portfolio/:portfolioID/allocations", handler.GetPortfolioWithAllocations)
+	api.Get("/portfolio/:portfolioId", portfolioHandler.GetPortfolio)
+	api.Get("/portfolio/:portfolioId/allocations", portfolioHandler.GetPortfolioWithAllocations)
+
+	// asset routes
+	api.Get("/asset", assetHandler.GetAsset)
+	api.Get("/asset/:assetId", assetHandler.GetAssets)
 
 	// Start server
 	log.Printf("Starting server on port %s", config.AppConfig.ServerPort)

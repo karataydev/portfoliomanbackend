@@ -1,0 +1,8 @@
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS param (
+    key VARCHAR(255) PRIMARY KEY,
+    value TEXT
+);
+
+COMMIT;
