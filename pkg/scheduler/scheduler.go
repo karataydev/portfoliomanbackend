@@ -21,6 +21,10 @@ type Scheduler struct {
 	tasks []Task
 }
 
+func New() *Scheduler {
+	return &Scheduler{}
+}
+
 func (s *Scheduler) AddTask(task Task) {
 	now := time.Now()
 	nextRun := time.Date(now.Year(), now.Month(), now.Day(), task.hour, task.min, task.sec, 0, now.Location())
