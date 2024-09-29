@@ -4,19 +4,24 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	DBHost     string
-	DBPort     int
-	DBUser     string
-	DBPassword string
-	DBName     string
-	DBSSLMode  string
-	ServerPort string
+	DBHost         string
+	DBPort         int
+	DBUser         string
+	DBPassword     string
+	DBName         string
+	DBSSLMode      string
+	ServerPort     string
+	PublicKey      string
+	PrivateKey     string
+	GoogleClientId string
+	TokenDuration  time.Duration
 }
 
 var AppConfig Config
@@ -28,13 +33,17 @@ func Load() error {
 	}
 
 	AppConfig = Config{
-		DBHost:     getEnv("DB_HOST", "localhost"),
-		DBPort:     getEnvAsInt("DB_PORT", 5432),
-		DBUser:     getEnv("DB_USER", ""),
-		DBPassword: getEnv("DB_PASSWORD", ""),
-		DBName:     getEnv("DB_NAME", ""),
-		DBSSLMode:  getEnv("DB_SSLMODE", "disable"),
-		ServerPort: getEnv("SERVER_PORT", "3000"),
+		DBHost:         getEnv("DB_HOST", "localhost"),
+		DBPort:         getEnvAsInt("DB_PORT", 5432),
+		DBUser:         getEnv("DB_USER", ""),
+		DBPassword:     getEnv("DB_PASSWORD", ""),
+		DBName:         getEnv("DB_NAME", ""),
+		DBSSLMode:      getEnv("DB_SSLMODE", "disable"),
+		ServerPort:     getEnv("SERVER_PORT", "3000"),
+		PublicKey:      getEnv("PUBLIC_KEY", ""),
+		PrivateKey:     getEnv("PRIVATE_KEY", ""),
+		GoogleClientId: getEnv("GOOGLE_CLIENT_ID", ""),
+		TokenDuration:  time.Duration(getEnvAsInt("TOKEN_DURATION_MINUTES", 60*24*30)) * time.Minute,
 	}
 
 	log.Info("Configuration loaded successfully")
