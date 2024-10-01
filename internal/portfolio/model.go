@@ -9,6 +9,7 @@ import (
 
 type Portfolio struct {
 	Id          int64          `db:"id" json:"id"`
+	Symbol      string         `db:"symbol" json:"symbol"`
 	UserId      int64          `db:"user_id" json:"user_id"`
 	Name        string         `db:"name" json:"name"`
 	Description sql.NullString `db:"description" json:"description"`

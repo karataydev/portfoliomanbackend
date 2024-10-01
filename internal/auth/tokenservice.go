@@ -30,31 +30,12 @@ func (v *TokenService) ValidateGoogleToken(idToken string) (*GoogleTokenClaims, 
 		return nil, err
 	}
 
-	email, ok := payload.Claims["email"].(string)
-	if !ok {
+	if payload.Id == "" || payload.Email == "" || payload.GivenName == "" {
 		return nil, InvalidTokenErr
 	}
-	familyName, ok := payload.Claims["family_name"].(string)
-	if !ok {
-		return nil, InvalidTokenErr
-	}
-	givenName, ok := payload.Claims["given_name"].(string)
-	if !ok {
-		return nil, InvalidTokenErr
-	}
-	picture, ok := payload.Claims["picture"].(string)
-	if !ok {
-		return nil, InvalidTokenErr
-	}
-
-	return &GoogleTokenClaims{
-		Id:         payload.Subject,
-		Email:      email,
-		FamilyName: familyName,
-		GivenName:  givenName,
-		Picture:    picture,
-	}, nil
+	return payload, nil
 }
+
 func (v *TokenService) ValidateToken(token string) (*TokenClaims, error) {
 	tok, err := jwt.Parse(token, func(jwtToken *jwt.Token) (interface{}, error) {
 		if _, ok := jwtToken.Method.(*jwt.SigningMethodRSA); !ok {

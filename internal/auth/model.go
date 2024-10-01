@@ -12,11 +12,11 @@ type TokenClaims struct {
 }
 
 type GoogleTokenClaims struct {
-	Id         string
-	Email      string
-	FamilyName string
-	GivenName  string
-	Picture    string
+	Id         string `json:"id"`
+	Email      string `json:"email"`
+	FamilyName string `json:"family_name"`
+	GivenName  string `json:"given_name"`
+	Picture    string `json:"picture"`
 }
 
 type RSAKeys struct {
@@ -37,4 +37,11 @@ func NewRSAKeysFromByte(prvKeyByte []byte, pubKeyByte []byte) (*RSAKeys, error) 
 		PublicKey:  pubKey,
 		PrivateKey: prvKey,
 	}, nil
+}
+
+type GoogleTokenInfo struct {
+	Aud       string `json:"audience"`
+	UserId    string `json:"user_id"`
+	Scope     string `json:"scope"`
+	ExpiresIn int    `json:"expires_in"`
 }

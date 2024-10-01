@@ -1,6 +1,8 @@
 package asset
 
 import (
+	"time"
+
 	"github.com/gofiber/fiber/v2/log"
 )
 
@@ -22,6 +24,18 @@ func (s *Service) GetAssets() ([]SimpleAssetDTO, error) {
 
 func (s *Service) GetAsset(assetId int64) (*Asset, error) {
 	return s.repo.GetAsset(assetId)
+}
+
+func (s *Service) GetAssetBySymbol(symbol string) (*Asset, error) {
+	return s.repo.GetAssetBySymbol(symbol)
+}
+
+func (s *Service) GetAssetQuoteAtTime(assetId int64, t time.Time) (*AssetQuote, error) {
+	return s.repo.GetAssetQuoteAtTime(assetId, t)
+}
+
+func (s *Service) GetAssetQuotesForPeriod(assetId int64, startTime, endTime time.Time) ([]AssetQuote, error) {
+	return s.repo.GetAssetQuotesForPeriod(assetId, startTime, endTime)
 }
 
 func (s *Service) SaveAssetQuote(assetQuoteData AssetQuoteChanData) error {

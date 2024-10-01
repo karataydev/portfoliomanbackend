@@ -14,6 +14,7 @@ import (
 	"github.com/karataydev/portfoliomanbackend/internal/auth"
 	"github.com/karataydev/portfoliomanbackend/internal/config"
 	"github.com/karataydev/portfoliomanbackend/internal/database"
+	"github.com/karataydev/portfoliomanbackend/internal/investmentgrowth"
 	"github.com/karataydev/portfoliomanbackend/internal/param"
 	"github.com/karataydev/portfoliomanbackend/internal/portfolio"
 	"github.com/karataydev/portfoliomanbackend/internal/transaction"
@@ -42,6 +43,9 @@ type App struct {
 	userHandler *user.Handler
 
 	tokenService *auth.TokenService
+
+	investmentGrowthService *investmentgrowth.Service
+	investmentGrowthHandler *investmentgrowth.Handler
 
 	scheduler *scheduler.Scheduler
 }
@@ -84,12 +88,13 @@ func (a *App) initServices() {
 		log.Fatalf("Failed to initialize RSA keys: %v", err)
 	}
 
-	googleValidator, err := auth.NewGoogleValidator(config.AppConfig.GoogleClientId)
-	if err != nil {
-		log.Fatalf("Failed to initialize Google validator: %v", err)
-	}
+	googleValidator := auth.NewGoogleValidator(config.AppConfig.GoogleClientId)
 
 	a.tokenService = auth.NewTokenService(rsaKeys, config.AppConfig.TokenDuration, googleValidator)
+
+	// investment growth service
+	a.investmentGrowthService = investmentgrowth.NewService(a.portfolioService, a.assetService)
+	a.investmentGrowthHandler = investmentgrowth.NewHandler(a.investmentGrowthService)
 
 	// Initialize user service
 	userRepo := user.NewRepository(a.db)
@@ -108,14 +113,16 @@ func (a *App) setupRoutes() {
 
 	// Auth routes
 	authGroup := api.Group("/auth")
-	authGroup.Get("/signup", a.userHandler.SignUp)
-	authGroup.Get("/signin", a.userHandler.SignIn)
+	authGroup.Post("/signup", a.userHandler.SignUp)
+	authGroup.Post("/signin", a.userHandler.SignIn)
 
 	protected := api.Group("")
 	protected.Use(auth.JwtAuthMiddleware(a.tokenService))
 
 	protected.Get("/portfolio/:portfolioId", a.portfolioHandler.GetPortfolio)
 	protected.Get("/portfolio/:portfolioId/allocations", a.portfolioHandler.GetPortfolioWithAllocations)
+
+	protected.Get("/investment-growth/:symbol", a.investmentGrowthHandler.CalculateInvestmentGrowth)
 
 	protected.Get("/asset", a.assetHandler.GetAsset)
 	protected.Get("/asset/:assetId", a.assetHandler.GetAssets)
@@ -135,6 +142,7 @@ func (a *App) setupScheduler() {
 }
 
 func (a *App) Run() error {
+	a.assetQuoteFeederService.InsertInitialData()
 	a.scheduler.Start()
 	log.Printf("Starting server on port %s", config.AppConfig.ServerPort)
 	return a.fiberApp.Listen(":" + config.AppConfig.ServerPort)

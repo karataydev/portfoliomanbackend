@@ -1,6 +1,9 @@
 package user
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
+)
 
 type Handler struct {
 	service *Service
@@ -23,9 +26,9 @@ func (h *Handler) SignUp(c *fiber.Ctx) error {
 
 	response, err := h.service.SignUp(req.GoogleToken)
 	if err != nil {
-		// Log the error
+		log.Errorf("Failed to sign up: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to sign in",
+			"error": "Failed to sign up",
 		})
 	}
 
@@ -45,7 +48,7 @@ func (h *Handler) SignIn(c *fiber.Ctx) error {
 
 	response, err := h.service.SignIn(req.GoogleToken)
 	if err != nil {
-		// Log the error
+		log.Errorf("Failed to sign in: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to sign in",
 		})

@@ -15,7 +15,7 @@ func NewRepository(db *database.DBConnection) *Repository {
 
 func (r *Repository) GetPortfolio(portfolioId int64) (*PortfolioDTO, error) {
 	query := `
-        SELECT id, user_id, name, description, created_at, updated_at
+        SELECT *
         FROM portfolio
         WHERE id = $1
     `
@@ -23,6 +23,20 @@ func (r *Repository) GetPortfolio(portfolioId int64) (*PortfolioDTO, error) {
 	err := r.db.Get(&portfolio, query, portfolioId)
 	if err != nil {
 		log.Errorf("Error fetching portfolio: %v", err)
+		return nil, err
+	}
+	return &portfolio, nil
+}
+
+func (r *Repository) GetPortfolioBySymbol(symbol string) (*Portfolio, error) {
+	query := `
+        SELECT *
+        FROM portfolio
+        WHERE symbol = $1
+    `
+	var portfolio Portfolio
+	err := r.db.Get(&portfolio, query, symbol)
+	if err != nil {
 		return nil, err
 	}
 	return &portfolio, nil

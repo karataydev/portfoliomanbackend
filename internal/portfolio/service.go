@@ -25,6 +25,10 @@ func (s *Service) GetAllocations(portfolioId int64) ([]AllocationDTO, error) {
 	return s.repo.GetAllocations(portfolioId)
 }
 
+func (s *Service) GetPortfolioBySymbol(symbol string) (*Portfolio, error) {
+    return s.repo.GetPortfolioBySymbol(symbol)
+}
+
 func (s *Service) GetPortfolioWithAllocations(portfolioId int64) (*PortfolioDTO, error) {
 	portfolio, err := s.repo.GetPortfolioWithAllocations(portfolioId)
 	if err != nil {
