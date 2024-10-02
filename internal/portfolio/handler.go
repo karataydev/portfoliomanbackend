@@ -47,3 +47,27 @@ func (h *Handler) GetPortfolioWithAllocations(c *fiber.Ctx) error {
 
 	return c.JSON(portfolio)
 }
+
+func (h *Handler) AddTransactionToPortfolio(c *fiber.Ctx) error {
+	var request AddTransactionRequest
+	if err := c.BodyParser(&request); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
+	}
+
+	if err := request.validate(); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	portfolio, err := h.service.AddTransactionToPortfolio(request)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(portfolio)
+}

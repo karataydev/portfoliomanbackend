@@ -2,9 +2,11 @@ package portfolio
 
 import (
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/karataydev/portfoliomanbackend/internal/asset"
+	"github.com/karataydev/portfoliomanbackend/internal/transaction"
 )
 
 type Portfolio struct {
@@ -32,9 +34,34 @@ type AllocationDTO struct {
 	TargetPercentage  float64              `db:"target_percentage" json:"target_percentage"`
 	Amount            float64              `db:"-" json:"amount"`
 	CurrentPercentage float64              `db:"-" json:"current_percentage"`
+	UnrealizedPL      float64              `db:"-" json:"unrealized_pl"`
 }
 
 type PortfolioDTO struct {
 	Portfolio
 	Allocations []AllocationDTO `json:"allocations"`
+}
+
+type AddTransactionRequest struct {
+	PortfolioId int64                 `json:"portfolio_id"`
+	Symbol      string                `json:"symbol"`
+	Quantity    float64               `json:"quantity"`
+	AvgPrice    float64               `json:"avg_price"`
+	Side        transaction.OrderSide `json:"side"`
+}
+
+func (r *AddTransactionRequest) validate() error {
+	if r.PortfolioId <= 0 {
+		return errors.New("invalid portfolio Id")
+	}
+	if r.Symbol == "" {
+		return errors.New("symbol is required")
+	}
+	if r.Quantity <= 0 {
+		return errors.New("quantity must be positive")
+	}
+	if r.AvgPrice <= 0 {
+		return errors.New("average price must be positive")
+	}
+	return nil
 }

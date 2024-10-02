@@ -17,3 +17,8 @@ type Transaction struct {
 	AllocationId int64     `db:"allocation_id" json:"allocation_id"`
 	CreatedAt    time.Time `db:"created_at" json:"created_at"`
 }
+
+type AmountAndPLResult struct {
+    CurrentAmount float64
+    UnrealizedPL  float64
+}

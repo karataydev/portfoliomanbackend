@@ -1,6 +1,9 @@
 package portfolio
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/karataydev/portfoliomanbackend/internal/transaction"
 )
@@ -26,7 +29,7 @@ func (s *Service) GetAllocations(portfolioId int64) ([]AllocationDTO, error) {
 }
 
 func (s *Service) GetPortfolioBySymbol(symbol string) (*Portfolio, error) {
-    return s.repo.GetPortfolioBySymbol(symbol)
+	return s.repo.GetPortfolioBySymbol(symbol)
 }
 
 func (s *Service) GetPortfolioWithAllocations(portfolioId int64) (*PortfolioDTO, error) {
@@ -36,31 +39,31 @@ func (s *Service) GetPortfolioWithAllocations(portfolioId int64) (*PortfolioDTO,
 	}
 
 	var allocationIds []int64
+	var assetIds []int64
 	for _, allocation := range portfolio.Allocations {
 		allocationIds = append(allocationIds, allocation.Id)
+		assetIds = append(assetIds, allocation.Asset.Id)
 	}
 
-	amountMap, err := s.transactionService.CalculateAmounts(allocationIds...)
+	amountMap, err := s.transactionService.CalculateAmountsAndPL(allocationIds, assetIds)
 	if err != nil {
 		return nil, err
 	}
 
 	sumAmount := 0.0
 	for _, val := range amountMap {
-		sumAmount += val
+		sumAmount += val.CurrentAmount
 	}
 
 	for i := range portfolio.Allocations {
 		amount := amountMap[portfolio.Allocations[i].Id]
-		log.Info("Amount:", amount)
-		portfolio.Allocations[i].Amount = amount
+		portfolio.Allocations[i].Amount = amount.CurrentAmount
+		portfolio.Allocations[i].UnrealizedPL = amount.UnrealizedPL
 
 		if sumAmount != 0 {
-			percentage := (amount / sumAmount) * 100
-			log.Info("Percentage:", percentage)
+			percentage := (amount.CurrentAmount / sumAmount) * 100
 			portfolio.Allocations[i].CurrentPercentage = percentage
 		} else {
-			log.Info("Percentage: 0 (sum amount is zero)")
 			portfolio.Allocations[i].CurrentPercentage = 0
 		}
 	}
@@ -68,4 +71,37 @@ func (s *Service) GetPortfolioWithAllocations(portfolioId int64) (*PortfolioDTO,
 	log.Info(portfolio)
 
 	return portfolio, nil
+}
+
+func (s *Service) AddTransactionToPortfolio(request AddTransactionRequest) (*PortfolioDTO, error) {
+	portfolio, err := s.GetPortfolioWithAllocations(request.PortfolioId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get portfolio: %w", err)
+	}
+
+	var allocationId int64 = -1
+	for _, allocation := range portfolio.Allocations {
+		if allocation.Asset.Symbol == request.Symbol {
+			allocationId = allocation.Id
+			break
+		}
+	}
+
+	if allocationId == -1 {
+		return nil, errors.New("symbol does not exist in portfolio allocations")
+	}
+
+	newTransaction := &transaction.Transaction{
+		AllocationId: allocationId,
+		Side:         request.Side,
+		Quantity:     request.Quantity,
+		Price:        request.AvgPrice,
+	}
+
+	_, err = s.transactionService.Save(newTransaction)
+	if err != nil {
+		return nil, fmt.Errorf("failed to save transaction: %w", err)
+	}
+
+	return s.GetPortfolioWithAllocations(request.PortfolioId)
 }

@@ -68,19 +68,21 @@ func New(db *database.DBConnection) *App {
 func (a *App) initServices() {
 	paramRepo := param.NewRepository(a.db)
 	a.paramService = param.NewService(paramRepo)
-
-	transactionRepo := transaction.NewRepository(a.db)
-	a.transactionService = transaction.NewService(transactionRepo)
-
-	portfolioRepo := portfolio.NewRepository(a.db)
-	a.portfolioService = portfolio.NewService(portfolioRepo, a.transactionService)
-
+	
 	assetQuoteChan := make(chan asset.AssetQuoteChanData)
 	assetRepo := asset.NewRepository(a.db)
 	a.assetService = asset.NewService(assetRepo, assetQuoteChan)
 	go a.assetService.AssetQuoteChanDataConsumer()
 
 	a.assetQuoteFeederService = assetquotefeeder.NewService(a.assetService, a.paramService, assetQuoteChan)
+
+
+	transactionRepo := transaction.NewRepository(a.db)
+	a.transactionService = transaction.NewService(transactionRepo, a.assetService)
+
+	portfolioRepo := portfolio.NewRepository(a.db)
+	a.portfolioService = portfolio.NewService(portfolioRepo, a.transactionService)
+
 
 	// Initialize auth services
 	rsaKeys, err := auth.NewRSAKeysFromByte([]byte(config.AppConfig.PrivateKey), []byte(config.AppConfig.PublicKey))
@@ -121,13 +123,13 @@ func (a *App) setupRoutes() {
 
 	protected.Get("/portfolio/:portfolioId", a.portfolioHandler.GetPortfolio)
 	protected.Get("/portfolio/:portfolioId/allocations", a.portfolioHandler.GetPortfolioWithAllocations)
+	protected.Post("/portfolio/add-transaction", a.portfolioHandler.AddTransactionToPortfolio)
 
 	protected.Get("/investment-growth/:symbol", a.investmentGrowthHandler.CalculateInvestmentGrowth)
 
 	protected.Get("/asset", a.assetHandler.GetAsset)
 	protected.Get("/asset/:assetId", a.assetHandler.GetAssets)
 
-	protected.Post("/transaction", a.transactionHandler.Save)
 	protected.Get("/transaction", a.transactionHandler.Get)
 }
 

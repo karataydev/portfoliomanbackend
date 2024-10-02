@@ -38,6 +38,10 @@ func (s *Service) GetAssetQuotesForPeriod(assetId int64, startTime, endTime time
 	return s.repo.GetAssetQuotesForPeriod(assetId, startTime, endTime)
 }
 
+func (s *Service) GetLatestQuote(assetId int64) (*AssetQuote, error) {
+    return s.GetAssetQuoteAtTime(assetId, time.Now())
+}
+
 func (s *Service) SaveAssetQuote(assetQuoteData AssetQuoteChanData) error {
 
 	assetQuote := AssetQuote{
