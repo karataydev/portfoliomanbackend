@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
 )
 
 type Handler struct {
@@ -15,6 +16,7 @@ func NewHandler(service *Service) *Handler {
 }
 
 func (h *Handler) GetPortfolio(c *fiber.Ctx) error {
+	log.Info("in get by id")
 	portfolioId, err := c.ParamsInt("portfolioId")
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid portfolio ID"})
@@ -70,4 +72,95 @@ func (h *Handler) AddTransactionToPortfolio(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(portfolio)
+}
+
+func (h *Handler) GetUserPortfolios(c *fiber.Ctx) error {
+	log.Info("in get by user")
+	userIdInterface := c.Locals("userId")
+	userId, ok := userIdInterface.(int64)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+
+	portfolioListResponse, err := h.service.GetPortfolioListByUser(userId)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to fetch portfolios",
+		})
+	}
+
+	return c.JSON(portfolioListResponse)
+}
+
+
+func (h *Handler) FollowPortfolio(c *fiber.Ctx) error {
+	userID := c.Locals("userId").(int64)
+	portfolioID, err := c.ParamsInt("portfolioId")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid portfolio ID"})
+	}
+
+	err = h.service.FollowPortfolio(userID, int64(portfolioID))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to follow portfolio"})
+	}
+
+	return c.JSON(fiber.Map{"message": "Successfully followed portfolio"})
+}
+
+func (h *Handler) UnfollowPortfolio(c *fiber.Ctx) error {
+	userID := c.Locals("userId").(int64)
+	portfolioID, err := c.ParamsInt("portfolioId")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid portfolio ID"})
+	}
+
+	err = h.service.UnfollowPortfolio(userID, int64(portfolioID))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to unfollow portfolio"})
+	}
+
+	return c.JSON(fiber.Map{"message": "Successfully unfollowed portfolio"})
+}
+
+func (h *Handler) GetFollowedPortfolios(c *fiber.Ctx) error {
+	userID := c.Locals("userId").(int64)
+
+	portfolios, err := h.service.GetFollowedPortfolioList(userID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch followed portfolios"})
+	}
+
+	return c.JSON(portfolios)
+}
+
+func (h *Handler) GetFollowerCount(c *fiber.Ctx) error {
+	portfolioID, err := c.ParamsInt("portfolioId")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid portfolio ID"})
+	}
+
+	count, err := h.service.GetFollowerCount(int64(portfolioID))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch follower count"})
+	}
+
+	return c.JSON(fiber.Map{"follower_count": count})
+}
+
+func (h *Handler) IsFollowing(c *fiber.Ctx) error {
+	userID := c.Locals("userId").(int64)
+	portfolioID, err := c.ParamsInt("portfolioId")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid portfolio ID"})
+	}
+
+	isFollowing, err := h.service.IsFollowing(userID, int64(portfolioID))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to check following status"})
+	}
+
+	return c.JSON(fiber.Map{"is_following": isFollowing})
 }

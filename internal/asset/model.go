@@ -32,3 +32,12 @@ type AssetQuoteChanData struct {
 	Quote     float64
 	QuoteTime time.Time
 }
+
+type MarketGrowthListResponse struct {
+	Id int64 `json:"id"`
+
+	Symbol string  `json:"symbol"`
+	Name   string  `json:"name"`
+	Change float64 `json:"change"`
+	Amount float64 `json:"amount"`
+}

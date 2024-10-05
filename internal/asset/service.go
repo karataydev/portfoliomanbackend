@@ -1,6 +1,7 @@
 package asset
 
 import (
+	"errors"
 	"time"
 
 	"github.com/gofiber/fiber/v2/log"
@@ -39,7 +40,7 @@ func (s *Service) GetAssetQuotesForPeriod(assetId int64, startTime, endTime time
 }
 
 func (s *Service) GetLatestQuote(assetId int64) (*AssetQuote, error) {
-    return s.GetAssetQuoteAtTime(assetId, time.Now())
+	return s.GetAssetQuoteAtTime(assetId, time.Now())
 }
 
 func (s *Service) SaveAssetQuote(assetQuoteData AssetQuoteChanData) error {
@@ -60,4 +61,59 @@ func (s *Service) AssetQuoteChanDataConsumer() {
 			log.Error("Error consuming quote data.", quoteData, err)
 		}
 	}
+}
+
+func (s *Service) GetPreviousTradingDayQuote(assetId int64, currentTime time.Time) (*AssetQuote, error) {
+	checkTime := currentTime.AddDate(0, 0, -1)
+
+	for i := 0; i < 10; i++ { // Check up to 10 days back to be safe
+		quote, err := s.GetAssetQuoteAtTime(assetId, checkTime)
+		if err == nil {
+			return quote, nil
+		}
+
+		// If no quote found, move to the previous day
+		checkTime = checkTime.AddDate(0, 0, -1)
+	}
+
+	return nil, errors.New("no previous trading day quote found within the last 10 days")
+}
+
+func (s *Service) GetMarketOverview() ([]MarketGrowthListResponse, error) {
+	assetSymbols := []string{"VOO", "AAPL", "GOOGL", "MSFT", "AMZN", "META"}
+	assets, err := s.repo.GetAssetBySymbolList(assetSymbols)
+	if err != nil {
+		return nil, err
+	}
+
+	response := make([]MarketGrowthListResponse, 0, len(assets))
+	for _, asset := range assets {
+		// Get latest quote
+		latestQuote, err := s.GetLatestQuote(asset.Id)
+		if err != nil {
+			return nil, err
+		}
+
+		// Get previous trading day quote
+		previousTradingDayQuote, err := s.GetPreviousTradingDayQuote(asset.Id, latestQuote.QuoteTime)
+		if err != nil {
+			return nil, err
+		}
+
+		// Calculate daily change percentage for this asset
+		assetChange := 0.0
+		if previousTradingDayQuote.Quote != 0 {
+			assetChange = ((latestQuote.Quote - previousTradingDayQuote.Quote) / previousTradingDayQuote.Quote) * 100
+		}
+		portfolioResponse := MarketGrowthListResponse{
+			Id:     asset.Id,
+			Symbol: asset.Symbol,
+			Name:   asset.Name,
+			Change: assetChange,
+			Amount: latestQuote.Quote,
+		}
+		response = append(response, portfolioResponse)
+	}
+
+	return response, nil
 }

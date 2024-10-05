@@ -28,6 +28,21 @@ func (r *Repository) GetPortfolio(portfolioId int64) (*PortfolioDTO, error) {
 	return &portfolio, nil
 }
 
+func (r *Repository) GetPortfolioByUser(userId int64) (*[]PortfolioDTO, error) {
+	query := `
+        SELECT *
+        FROM portfolio
+        WHERE user_id = $1
+    `
+	var portfolios []PortfolioDTO
+	err := r.db.Select(&portfolios, query, userId)
+	if err != nil {
+		log.Errorf("Error fetching portfolio: %v", err)
+		return nil, err
+	}
+	return &portfolios, nil
+}
+
 func (r *Repository) GetPortfolioBySymbol(symbol string) (*Portfolio, error) {
 	query := `
         SELECT *
@@ -78,4 +93,98 @@ func (r *Repository) GetPortfolioWithAllocations(portfolioId int64) (*PortfolioD
 
 	portfolio.Allocations = allocations
 	return portfolio, nil
+}
+
+func (r *Repository) GetPortfolioByUserIdWithAllocations(userId int64) ([]PortfolioDTO, error) {
+	portfolios, err := r.GetPortfolioByUser(userId)
+	if err != nil {
+		return nil, err
+	}
+
+	var dtos []PortfolioDTO
+	for _, val := range *portfolios {
+		allocations, err := r.GetAllocations(val.Id)
+		if err != nil {
+			return nil, err
+		}
+		val.Allocations = allocations
+		dtos = append(dtos, val)
+	}
+
+	return dtos, nil
+}
+
+func (r *Repository) GetFollowedPortfolios(userId int64) ([]PortfolioDTO, error) {
+	query := `
+        SELECT p.* FROM portfolio p
+        JOIN portfolio_follow pf ON p.id = pf.portfolio_id
+        WHERE pf.user_id = $1
+    `
+	var portfolios []PortfolioDTO
+	err := r.db.Select(&portfolios, query, userId)
+	if err != nil {
+		log.Errorf("Error fetching portfolio: %v", err)
+		return nil, err
+	}
+	return portfolios, nil
+}
+
+func (r *Repository) GetFollowedPortfoliosWithAllocations(userId int64) ([]PortfolioDTO, error) {
+	portfolios, err := r.GetFollowedPortfolios(userId)
+	if err != nil {
+		return nil, err
+	}
+
+	var dtos []PortfolioDTO
+	for _, val := range portfolios {
+		allocations, err := r.GetAllocations(val.Id)
+		if err != nil {
+			return nil, err
+		}
+		val.Allocations = allocations
+		dtos = append(dtos, val)
+	}
+
+	return dtos, nil
+}
+
+func (r *Repository) FollowPortfolio(userID, portfolioID int64) error {
+	query := `
+        INSERT INTO portfolio_follow (user_id, portfolio_id)
+        VALUES ($1, $2)
+        ON CONFLICT (user_id, portfolio_id) DO NOTHING
+    `
+	_, err := r.db.Exec(query, userID, portfolioID)
+	return err
+}
+
+func (r *Repository) UnfollowPortfolio(userID, portfolioID int64) error {
+	query := `
+        DELETE FROM portfolio_follow
+        WHERE user_id = $1 AND portfolio_id = $2
+    `
+	_, err := r.db.Exec(query, userID, portfolioID)
+	return err
+}
+
+func (r *Repository) GetFollowerCount(portfolioID int64) (int, error) {
+	query := `
+        SELECT COUNT(*) FROM portfolio_follow
+        WHERE portfolio_id = $1
+    `
+	var count int
+	err := r.db.Get(&count, query, portfolioID)
+	return count, err
+}
+
+func (r *Repository) IsFollowing(userID, portfolioID int64) (bool, error) {
+	query := `
+        SELECT EXISTS(
+            SELECT 1 FROM portfolio_follow
+            WHERE user_id = $1 AND portfolio_id = $2
+        )
+    `
+	var isFollowing bool
+	err := r.db.Get(&isFollowing, query, userID, portfolioID)
+	return isFollowing, err
 }

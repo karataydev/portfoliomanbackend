@@ -68,7 +68,7 @@ func New(db *database.DBConnection) *App {
 func (a *App) initServices() {
 	paramRepo := param.NewRepository(a.db)
 	a.paramService = param.NewService(paramRepo)
-	
+
 	assetQuoteChan := make(chan asset.AssetQuoteChanData)
 	assetRepo := asset.NewRepository(a.db)
 	a.assetService = asset.NewService(assetRepo, assetQuoteChan)
@@ -76,13 +76,11 @@ func (a *App) initServices() {
 
 	a.assetQuoteFeederService = assetquotefeeder.NewService(a.assetService, a.paramService, assetQuoteChan)
 
-
 	transactionRepo := transaction.NewRepository(a.db)
 	a.transactionService = transaction.NewService(transactionRepo, a.assetService)
 
 	portfolioRepo := portfolio.NewRepository(a.db)
-	a.portfolioService = portfolio.NewService(portfolioRepo, a.transactionService)
-
+	a.portfolioService = portfolio.NewService(portfolioRepo, a.transactionService, a.assetService)
 
 	// Initialize auth services
 	rsaKeys, err := auth.NewRSAKeysFromByte([]byte(config.AppConfig.PrivateKey), []byte(config.AppConfig.PublicKey))
@@ -121,14 +119,25 @@ func (a *App) setupRoutes() {
 	protected := api.Group("")
 	protected.Use(auth.JwtAuthMiddleware(a.tokenService))
 
+	protected.Post("/portfolio/add-transaction", a.portfolioHandler.AddTransactionToPortfolio)
+	protected.Get("/portfolio/user-portfolios", a.portfolioHandler.GetUserPortfolios)
+	protected.Get("/portfolio/followed-portfolios", a.portfolioHandler.GetFollowedPortfolios)
+
 	protected.Get("/portfolio/:portfolioId", a.portfolioHandler.GetPortfolio)
 	protected.Get("/portfolio/:portfolioId/allocations", a.portfolioHandler.GetPortfolioWithAllocations)
-	protected.Post("/portfolio/add-transaction", a.portfolioHandler.AddTransactionToPortfolio)
+
+	protected.Post("/portfolio/:portfolioId/follow", a.portfolioHandler.FollowPortfolio)
+	protected.Delete("/portfolio/:portfolioId/unfollow", a.portfolioHandler.UnfollowPortfolio)
+	protected.Get("/portfolio/:portfolioId/follower-count", a.portfolioHandler.GetFollowerCount)
+	protected.Get("/portfolio/:portfolioId/is-following", a.portfolioHandler.IsFollowing)
 
 	protected.Get("/investment-growth/:symbol", a.investmentGrowthHandler.CalculateInvestmentGrowth)
 
 	protected.Get("/asset", a.assetHandler.GetAsset)
+	protected.Get("/asset/market-overview", a.assetHandler.GetMarketOverview)
+
 	protected.Get("/asset/:assetId", a.assetHandler.GetAssets)
+
 
 	protected.Get("/transaction", a.transactionHandler.Get)
 }

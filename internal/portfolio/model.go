@@ -28,6 +28,13 @@ type Allocation struct {
 	UpdatedAt        time.Time `db:"updated_at" json:"updated_at"`
 }
 
+type PortfolioFollow struct {
+	Id          int64     `db:"id" json:"id"`
+	UserId     int64     `db:"user_id" json:"user_id"`
+	PortfolioId int64     `db:"portfolio_id" json:"portfolio_id"`
+	CreatedAt   time.Time `db:"created_at" json:"created_at"`
+}
+
 type AllocationDTO struct {
 	Id                int64                `db:"id" json:"id"`
 	Asset             asset.SimpleAssetDTO `json:"asset"`
@@ -64,4 +71,14 @@ func (r *AddTransactionRequest) validate() error {
 		return errors.New("average price must be positive")
 	}
 	return nil
+}
+
+type PortfolioListResponse struct {
+	Id int64 `json:"id"`
+
+	Symbol string  `json:"symbol"`
+	Name   string  `json:"name"`
+	Change float64 `json:"change"`
+	Owner  string  `json:"owner"`
+	Amount float64 `json:"amount"`
 }

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
 )
 
 type Handler struct {
@@ -40,4 +41,15 @@ func (h *Handler) GetAsset(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(asset)
+}
+
+func (h *Handler) GetMarketOverview(c *fiber.Ctx) error {
+	resp, err := h.service.GetMarketOverview()
+	if err != nil {
+		log.Error(err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to fetch market overview",
+		})
+	}
+	return c.JSON(resp)
 }

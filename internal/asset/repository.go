@@ -5,6 +5,7 @@ import (
 
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/karataydev/portfoliomanbackend/internal/database"
+	"github.com/lib/pq"
 )
 
 type Repository struct {
@@ -58,6 +59,20 @@ func (r *Repository) GetAssetBySymbol(symbol string) (*Asset, error) {
 		return nil, err
 	}
 	return &asset, nil
+}
+
+func (r *Repository) GetAssetBySymbolList(symbols []string) ([]Asset, error) {
+	query := `
+		SELECT *
+		FROM asset
+		WHERE symbol = ANY($1)
+	`
+	var assets []Asset
+	err := r.db.Select(&assets, query, pq.Array(symbols))
+	if err != nil {
+		return nil, err
+	}
+	return assets, nil
 }
 
 func (r *Repository) GetAssetQuoteAtTime(assetId int64, t time.Time) (*AssetQuote, error) {
