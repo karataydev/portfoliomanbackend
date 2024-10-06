@@ -188,3 +188,34 @@ func (r *Repository) IsFollowing(userID, portfolioID int64) (bool, error) {
 	err := r.db.Get(&isFollowing, query, userID, portfolioID)
 	return isFollowing, err
 }
+
+func (r *Repository) CreatePortfolio(portfolio *Portfolio) (*Portfolio, error) {
+	query := `
+        INSERT INTO portfolio (user_id, name, description)
+        VALUES (:user_id, :name, :description)
+        RETURNING id, created_at, updated_at
+    `
+	rows, err := r.db.NamedQuery(query, portfolio)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		err := rows.Scan(&portfolio.Id, &portfolio.CreatedAt, &portfolio.UpdatedAt)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return portfolio, nil
+}
+
+func (r *Repository) CreateAllocations(allocations []Allocation) error {
+	query := `
+        INSERT INTO allocation (portfolio_id, asset_id, target_percentage)
+        VALUES (:portfolio_id, :asset_id, :target_percentage)
+    `
+	_, err := r.db.NamedExec(query, allocations)
+	return err
+}

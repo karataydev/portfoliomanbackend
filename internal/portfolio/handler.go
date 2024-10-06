@@ -2,6 +2,7 @@ package portfolio
 
 import (
 	"database/sql"
+	"fmt"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
@@ -163,4 +164,27 @@ func (h *Handler) IsFollowing(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"is_following": isFollowing})
+}
+
+
+func (h *Handler) CreatePortfolio(c *fiber.Ctx) error {
+    var req CreatePortfolioRequest
+    if err := c.BodyParser(&req); err != nil {
+        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+            "error": "Invalid request body",
+        })
+    }
+
+    // Get the user ID from the context (set by the auth middleware)
+    userId := c.Locals("userId").(int64)
+    req.UserId = userId
+
+    createdPortfolio, err := h.service.CreatePortfolio(req)
+    if err != nil {
+        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+            "error": fmt.Sprintf("Failed to create portfolio: %v", err),
+        })
+    }
+
+    return c.JSON(createdPortfolio)
 }

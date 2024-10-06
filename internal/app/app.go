@@ -119,6 +119,7 @@ func (a *App) setupRoutes() {
 	protected := api.Group("")
 	protected.Use(auth.JwtAuthMiddleware(a.tokenService))
 
+	protected.Post("/portfolio", a.portfolioHandler.CreatePortfolio)
 	protected.Post("/portfolio/add-transaction", a.portfolioHandler.AddTransactionToPortfolio)
 	protected.Get("/portfolio/user-portfolios", a.portfolioHandler.GetUserPortfolios)
 	protected.Get("/portfolio/followed-portfolios", a.portfolioHandler.GetFollowedPortfolios)

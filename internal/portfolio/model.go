@@ -30,7 +30,7 @@ type Allocation struct {
 
 type PortfolioFollow struct {
 	Id          int64     `db:"id" json:"id"`
-	UserId     int64     `db:"user_id" json:"user_id"`
+	UserId      int64     `db:"user_id" json:"user_id"`
 	PortfolioId int64     `db:"portfolio_id" json:"portfolio_id"`
 	CreatedAt   time.Time `db:"created_at" json:"created_at"`
 }
@@ -81,4 +81,16 @@ type PortfolioListResponse struct {
 	Change float64 `json:"change"`
 	Owner  string  `json:"owner"`
 	Amount float64 `json:"amount"`
+}
+
+type CreatePortfolioRequest struct {
+	UserId      int64               `json:"user_id"`
+	Name        string              `json:"name"`
+	Description string              `json:"description"`
+	Allocations []AllocationRequest `json:"allocations"`
+}
+
+type AllocationRequest struct {
+	AssetId          int64   `json:"asset_id"`
+	TargetPercentage float64 `json:"target_percentage"`
 }

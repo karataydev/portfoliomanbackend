@@ -1,6 +1,7 @@
 package portfolio
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 
@@ -274,4 +275,36 @@ func (s *Service) GetFollowerCount(portfolioID int64) (int, error) {
 
 func (s *Service) IsFollowing(userID, portfolioID int64) (bool, error) {
 	return s.repo.IsFollowing(userID, portfolioID)
+}
+
+func (s *Service) CreatePortfolio(req CreatePortfolioRequest) (*PortfolioDTO, error) {
+	// Create the portfolio
+	portfolio := &Portfolio{
+		UserId:      req.UserId,
+		Name:        req.Name,
+		Description: sql.NullString{String: req.Description, Valid: req.Description != ""},
+	}
+
+	createdPortfolio, err := s.repo.CreatePortfolio(portfolio)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create portfolio: %w", err)
+	}
+
+	// Create allocations
+	allocations := make([]Allocation, len(req.Allocations))
+	for i, alloc := range req.Allocations {
+		allocations[i] = Allocation{
+			PortfolioId:      createdPortfolio.Id,
+			AssetId:          alloc.AssetId,
+			TargetPercentage: alloc.TargetPercentage,
+		}
+	}
+
+	err = s.repo.CreateAllocations(allocations)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create allocations: %w", err)
+	}
+
+	// Fetch the created portfolio with allocations
+	return s.GetPortfolioWithAllocations(createdPortfolio.Id)
 }
