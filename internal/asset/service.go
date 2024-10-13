@@ -117,3 +117,7 @@ func (s *Service) GetMarketOverview() ([]MarketGrowthListResponse, error) {
 
 	return response, nil
 }
+
+func (s *Service) SearchAssets(query string, limit, offset int) ([]SimpleAssetDTO, int, error) {
+	return s.repo.SearchAssets(query, limit, offset)
+}

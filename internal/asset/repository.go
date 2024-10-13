@@ -1,6 +1,8 @@
 package asset
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2/log"
@@ -129,4 +131,45 @@ func (r *Repository) SaveAssetQuote(assetQuote AssetQuote) error {
 
 	// Commit the transaction
 	return tx.Commit()
+}
+
+func (r *Repository) SearchAssets(searchSymbol string, limit int, offset int) ([]SimpleAssetDTO, int, error) {
+	isAll := limit == -1
+
+	query := `
+        SELECT id, name, symbol
+        FROM asset
+        WHERE LOWER(symbol) LIKE LOWER($1) OR LOWER(name) LIKE LOWER($1)
+        `
+	if !isAll {
+		query += `
+			ORDER BY symbol
+			LIMIT $2 OFFSET $3
+		`
+	}
+
+	countQuery := `
+        SELECT COUNT(*)
+        FROM asset
+        WHERE LOWER(symbol) LIKE LOWER($1) OR LOWER(name) LIKE LOWER($1)
+    `
+
+	searchTerm := "%" + strings.ToLower(searchSymbol) + "%"
+
+	var assets []SimpleAssetDTO
+	err := r.db.Select(&assets, query, searchTerm, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("error fetching assets: %v", err)
+	}
+	if isAll {
+		return assets, len(assets), nil
+
+	}
+	var totalCount int
+	err = r.db.Get(&totalCount, countQuery, searchTerm)
+	if err != nil {
+		return nil, 0, fmt.Errorf("error counting assets: %v", err)
+	}
+
+	return assets, totalCount, nil
 }

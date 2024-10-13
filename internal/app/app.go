@@ -136,9 +136,9 @@ func (a *App) setupRoutes() {
 
 	protected.Get("/asset", a.assetHandler.GetAsset)
 	protected.Get("/asset/market-overview", a.assetHandler.GetMarketOverview)
+	protected.Get("/asset/search", a.assetHandler.SearchAssets)
 
 	protected.Get("/asset/:assetId", a.assetHandler.GetAssets)
-
 
 	protected.Get("/transaction", a.transactionHandler.Get)
 }

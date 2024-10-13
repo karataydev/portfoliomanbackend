@@ -2,6 +2,7 @@ package asset
 
 import (
 	"database/sql"
+	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
@@ -52,4 +53,34 @@ func (h *Handler) GetMarketOverview(c *fiber.Ctx) error {
 		})
 	}
 	return c.JSON(resp)
+}
+
+func (h *Handler) SearchAssets(c *fiber.Ctx) error {
+    query := c.Query("q", "")
+    limit, _ := strconv.Atoi(c.Query("limit", "10"))
+    page, _ := strconv.Atoi(c.Query("page", "1"))
+
+    if limit <= 0 {
+        limit = 10
+    }
+    if page <= 0 {
+        page = -1
+    }
+
+    offset := (page - 1) * limit
+
+    assets, totalCount, err := h.service.SearchAssets(query, limit, offset)
+    if err != nil {
+        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+            "error": "Failed to search assets",
+        })
+    }
+
+    return c.JSON(fiber.Map{
+        "assets":      assets,
+        "total_count": totalCount,
+        "page":        page,
+        "limit":       limit,
+        "total_pages": (totalCount + limit - 1) / limit,
+    })
 }
