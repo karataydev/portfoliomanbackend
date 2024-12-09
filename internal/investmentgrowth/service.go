@@ -80,46 +80,57 @@ func (s *Service) CalculatePortfolioInvestmentGrowth(portfolioId int64) (*Growth
 }
 
 func (s *Service) calculateGrowthForPeriod(portfolio *portfolio.PortfolioDTO, initialInvestment float64, startDate, endDate time.Time, period string) ([]GrowthDataPoint, error) {
-	var allQuotes []asset.AssetQuote
+	// Create a map to store aggregated values by timestamp
+	aggregatedQuotes := make(map[time.Time]float64)
+	totalWeight := 0.0
+
+	// Calculate total weight (should sum to 100)
+	for _, allocation := range portfolio.Allocations {
+		totalWeight += allocation.TargetPercentage
+	}
+
+	// Process each allocation
 	for _, allocation := range portfolio.Allocations {
 		quotes, err := s.assetService.GetAssetQuotesForPeriod(allocation.Asset.Id, startDate, endDate)
 		if err != nil {
 			return nil, err
 		}
-		allQuotes = append(allQuotes, quotes...)
-	}
 
-	// Sort all quotes by timestamp
-	sort.Slice(allQuotes, func(i, j int) bool {
-		return allQuotes[i].QuoteTime.Before(allQuotes[j].QuoteTime)
-	})
+		// Group quotes by day
+		dailyQuotes := make(map[time.Time][]asset.AssetQuote)
+		for _, quote := range quotes {
+			day := time.Date(quote.QuoteTime.Year(), quote.QuoteTime.Month(), quote.QuoteTime.Day(), 0, 0, 0, 0, quote.QuoteTime.Location())
+			dailyQuotes[day] = append(dailyQuotes[day], quote)
+		}
 
-	var selectedQuotes []asset.AssetQuote
-	var currentDay time.Time
-	var dayQuotes []asset.AssetQuote
-
-	for _, quote := range allQuotes {
-		if !sameDay(currentDay, quote.QuoteTime) {
-			if len(dayQuotes) > 0 {
-				selectedQuotes = append(selectedQuotes, selectQuotesForPeriod(dayQuotes, period)...)
+		// Process each day's quotes
+		for _, dayQuotes := range dailyQuotes {
+			selected := selectQuotesForPeriod(dayQuotes, period)
+			for _, quote := range selected {
+				weight := allocation.TargetPercentage / totalWeight
+				// Add weighted contribution to the aggregated value
+				aggregatedQuotes[quote.QuoteTime] += quote.Quote * weight
 			}
-			currentDay = quote.QuoteTime
-			dayQuotes = []asset.AssetQuote{quote}
-		} else {
-			dayQuotes = append(dayQuotes, quote)
 		}
 	}
-	if len(dayQuotes) > 0 {
-		selectedQuotes = append(selectedQuotes, selectQuotesForPeriod(dayQuotes, period)...)
-	}
 
+	// Convert map to sorted slice
+	var timestamps []time.Time
+	for t := range aggregatedQuotes {
+		timestamps = append(timestamps, t)
+	}
+	sort.Slice(timestamps, func(i, j int) bool {
+		return timestamps[i].Before(timestamps[j])
+	})
+
+	// Create growth data points
 	var growthData []GrowthDataPoint
-	if len(selectedQuotes) > 0 {
-		initialQuote := selectedQuotes[0].Quote
-		for _, quote := range selectedQuotes {
-			value := initialInvestment * (quote.Quote / initialQuote)
+	if len(timestamps) > 0 {
+		initialValue := aggregatedQuotes[timestamps[0]]
+		for _, t := range timestamps {
+			value := initialInvestment * (aggregatedQuotes[t] / initialValue)
 			growthData = append(growthData, GrowthDataPoint{
-				Timestamp: quote.QuoteTime,
+				Timestamp: t,
 				Value:     value,
 			})
 		}
